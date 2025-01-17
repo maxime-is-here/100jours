@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Photo Voting</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+			background-color: #f4f4f4;
+			margin: 0;
+			padding: 0;
+		}
+
+		#card-container {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 80vh;
+			overflow: hidden;
+		}
+
+		.card {
+			position: relative;
+			width: 600px;
+			height: 700px;
+			overflow: hidden;
+			border-radius: 10px;
+			box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+			background-color: #fff;
+			transition: transform 0.3s ease, opacity 0.3s ease;
+		}
+
+		.card img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			transition: filter 0.2s ease; /* Changement de couleur */
+		}
+
+		.card-buttons {
+			position: absolute;
+			bottom: 10px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 10px;
+		}
+
+		.card-buttons button {
+			padding: 10px 15px;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			color: white;
+			font-weight: bold;
+		}
+
+		.button-like {
+			background-color: #28a745;
+		}
+
+		.button-dislike {
+			background-color: #dc3545;
+		}
+
+		#results {
+			margin-top: 30px;
+			text-align: center;
+		}
+
+		#results table {
+			margin: 0 auto;
+			border-collapse: collapse;
+			width: 80%;
+		}
+
+		#results table th,
+		#results table td {
+			border: 1px solid #ddd;
+			padding: 10px;
+			text-align: center;
+		}
+
+		#results table th {
+			background-color: #007bff;
+			color: white;
+		}
+
+		#results table img {
+			width: 50px;
+			height: 50px;
+			object-fit: cover;
+			border-radius: 5px;
+		}
+
+		/* Animation de transition */
+		.card.phase-color-like img {
+			filter: brightness(1) saturate(2) hue-rotate(-120deg); /* Vert vif */
+		}
+
+		.card.phase-color-dislike img {
+			filter: brightness(1) saturate(2) hue-rotate(0deg); /* Rouge vif */
+		}
+
+		.card.phase-move-like {
+			transform: translateX(-120%);
+			opacity: 0;
+		}
+
+		.card.phase-move-dislike {
+			transform: translateX(120%);
+			opacity: 0;
+		}
+	</style>
+</head>
+<body>
+	<h1>Photo Voting App</h1>
+	<div id="card-container"></div>
+	<div id="results">
+		<h2>Scoreboard</h2>
+		<table>
+			<thead>
+				<tr>
+					<th>Photo</th>
+					<th>Score</th>
+				</tr>
+			</thead>
+			<tbody id="scoreboard"></tbody>
+		</table>
+	</div>
+
+	<script>
+		// Simule un dossier avec des images nommées photo (1).jpg, photo (2).jpg, etc.
+		const imageFolder = 'images/';
+		const numberOfImages = 100; // Nombre total d'images
+		const imageFiles = Array.from({ length: numberOfImages }, (_, i) => `${imageFolder}photo (${i + 1}).jpg`);
+
+		// Mélange les images de façon aléatoire
+		const shuffledImages = imageFiles.sort(() => Math.random() - 0.5);
+
+		// Stocke les scores
+		const scores = {};
+		let currentIndex = 0; // Index de l'image actuelle
+
+		// Crée une carte pour une image donnée
+		function createCard(imageSrc) {
+			const card = document.createElement('div');
+			card.className = 'card';
+
+			// Ajoute l'image
+			const img = document.createElement('img');
+			img.src = imageSrc;
+			card.appendChild(img);
+
+			// Boutons Like/Dislike
+			const buttonsDiv = document.createElement('div');
+			buttonsDiv.className = 'card-buttons';
+
+			const likeButton = document.createElement('button');
+			likeButton.className = 'button-like';
+			likeButton.textContent = 'Like';
+			likeButton.addEventListener('click', () => handleVote(imageSrc, +100, 'like'));
+			buttonsDiv.appendChild(likeButton);
+
+			const dislikeButton = document.createElement('button');
+			dislikeButton.className = 'button-dislike';
+			dislikeButton.textContent = 'Dislike';
+			dislikeButton.addEventListener('click', () => handleVote(imageSrc, -50, 'dislike'));
+			buttonsDiv.appendChild(dislikeButton);
+
+			card.appendChild(buttonsDiv);
+
+			return card;
+		}
+
+		// Gestion des votes
+		function handleVote(imageSrc, scoreChange, action) {
+			// Met à jour le score
+			if (!scores[imageSrc]) scores[imageSrc] = 0;
+			scores[imageSrc] += scoreChange;
+
+			// Animation de la carte
+			const cardContainer = document.getElementById('card-container');
+			const card = cardContainer.firstChild;
+
+			// Étape 1 : Changement de couleur
+			if (action === 'like') {
+				card.classList.add('phase-color-like');
+			} else if (action === 'dislike') {
+				card.classList.add('phase-color-dislike');
+			}
+
+			// Étape 2 : Déplacement après 0.2s
+			setTimeout(() => {
+				if (action === 'like') {
+					card.classList.add('phase-move-like');
+				} else if (action === 'dislike') {
+					card.classList.add('phase-move-dislike');
+				}
+
+				// Passe à l'image suivante après 0.3s (temps du déplacement)
+				setTimeout(() => {
+					currentIndex = (currentIndex + 1) % shuffledImages.length;
+					updateCard();
+					updateScoreboard();
+				}, 300); // Temps du déplacement (0.3s)
+			}, 200); // Temps du changement de couleur (0.2s)
+		}
+
+		// Affiche la carte actuelle
+		function updateCard() {
+			const cardContainer = document.getElementById('card-container');
+			cardContainer.innerHTML = ''; // Réinitialise la carte
+
+			// Affiche l'image courante
+			const card = createCard(shuffledImages[currentIndex]);
+			cardContainer.appendChild(card);
+		}
+
+		// Met à jour le tableau des scores
+		function updateScoreboard() {
+			const scoreboard = document.getElementById('scoreboard');
+			scoreboard.innerHTML = ''; // Réinitialise
+
+			// Trie les scores
+			const sortedScores = Object.entries(scores).sort(([, a], [, b]) => b - a);
+
+			// Ajoute les scores au tableau
+			for (const [image, score] of sortedScores) {
+				const row = document.createElement('tr');
+
+				// Cellule pour la miniature de l'image
+				const imageCell = document.createElement('td');
+				const imgPreview = document.createElement('img');
+				imgPreview.src = image;
+				imageCell.appendChild(imgPreview);
+				row.appendChild(imageCell);
+
+				// Cellule pour le score
+				const scoreCell = document.createElement('td');
+				scoreCell.textContent = score;
+				row.appendChild(scoreCell);
+
+				scoreboard.appendChild(row);
+			}
+		}
+
+		// Initialise la première carte
+		function initGallery() {
+			updateCard(); // Affiche la première carte
+		}
+
+		// Lancement
+		initGallery();
+	</script>
+</body>
+</html>
